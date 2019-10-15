@@ -34,7 +34,8 @@ Example
 -------
 
 Code:
-```
+
+```python3
 import bprof._bprof as bp
 import time
 
