@@ -11,11 +11,11 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = [ ]
+requirements = []
 
-setup_requirements = [ ]
+setup_requirements = []
 
-test_requirements = [ ]
+test_requirements = []
 
 from distutils.extension import Extension
 
@@ -55,5 +55,5 @@ setup(
     url='https://github.com/joelfrederico/bprof',
     version='0.1.3',
     zip_safe=False,
-    ext_modules = [module1]
+    ext_modules=[module1]
 )
