@@ -45,7 +45,7 @@ There is a lot of future work. The display is rudimentary and not programmatical
 
 ## Credits
 
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+This package was created with [Cookiecutter][1] and the [audreyr/cookiecutter-pypackage][2] project template.
 
-[Cookiecutter](https://github.com/audreyr/cookiecutter)
-[audreyr/cookiecutter-pypackage](https://github.com/audreyr/cookiecutter-pypackage)
+[1]: https://github.com/audreyr/cookiecutter
+[2]: https://github.com/audreyr/cookiecutter-pypackage
