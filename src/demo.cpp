@@ -69,7 +69,6 @@ void Function::add_elapsed_internal(size_t line_number, const std::chrono::nanos
 
 void BaseFunction::add_elapsed_internal(const duration& time) {
   internal_time_ += time;
-  std::cout << "Internal: " << internal_time_.count()/1e9 << std::endl;
 }
 
 Function::Function(
