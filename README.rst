@@ -36,10 +36,9 @@ Example
 Code:
 
 ```python
-bp.start()
-f()
-bp.stop()
-bp.dump("")
+import a
+import b
+b.c(yes="no")
 ```
 
 Results:
