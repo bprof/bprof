@@ -72,16 +72,6 @@ void BaseFunction::add_elapsed_internal(const duration& time) {
   std::cout << "Internal: " << internal_time_.count()/1e9 << std::endl;
 }
 
-
-template<> struct std::hash<Function> {
-  using argument_type = Function;
-  using result_type = std::size_t;
-
-  result_type operator()(argument_type const& function) const noexcept {
-    return reinterpret_cast<result_type>(function.code());
-  }
-};
-
 Function::Function(
     std::string name, std::vector<std::string> lines, PyCodeObject* code)
       : BaseFunction(std::move(name)), code_(code), lines_(std::move(lines)) {
