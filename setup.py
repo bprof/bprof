@@ -19,7 +19,7 @@ test_requirements = [ ]
 
 from distutils.extension import Extension
 
-module1 = Extension('_bprof',
+module1 = Extension('bprof._bprof',
                     sources = ['src/demo.cpp'],
                     extra_compile_args=['-std=c++17', '-fcolor-diagnostics'],
                     language = 'c++17')
