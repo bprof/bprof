@@ -38,12 +38,11 @@ Code:
 ```python
 import bprof._bprof as bp
 import time
+```
 
-
+```
 def f():
     time.sleep(1)
-
-
 bp.start()
 f()
 bp.stop()
