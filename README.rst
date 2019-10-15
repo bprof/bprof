@@ -44,10 +44,12 @@ bp.dump("")
 
 Results:
 
+```
     $ Name: f, 1.2142e-05
     $ 1.00074(6.21e-07/1.00074):     time.sleep(1)
     $ Name: <built-in function stop>, 0
     $ Name: <built-in function sleep>, 1.00074
+```
 
 Future
 ------
