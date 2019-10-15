@@ -22,18 +22,27 @@ The approach taken here is to integrate all of the time between hooks and add it
 Code:
 
 ```python
-import a
-import b
-b.c(yes="no")
+import bprof._bprof as bp
+import time
+
+
+def f():
+    time.sleep(1)
+
+
+bp.start()
+f()
+bp.stop()
+bp.dump("")
 ```
 
 Results:
 
 ```
-    $ Name: f, 1.2142e-05
-    $ 1.00074(6.21e-07/1.00074):     time.sleep(1)
-    $ Name: <built-in function stop>, 0
-    $ Name: <built-in function sleep>, 1.00074
+Name: f, 1.2142e-05
+1.00074(6.21e-07/1.00074):     time.sleep(1)
+Name: <built-in function stop>, 0
+Name: <built-in function sleep>, 1.00074
 ```
 
 ## Future
