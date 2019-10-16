@@ -3,22 +3,21 @@
 
 #include <chrono>
 #include <iostream>
-#include <memory>
 #include <stack>
 #include <string>
 #include <utility>
 #include <vector>
 #include <unordered_map>
-#include <map>
 
 using duration = std::chrono::nanoseconds;
 
-std::string PyFrame_GetName(PyCodeObject* code) {
-  const char* method_name_char = PyUnicode_AsUTF8AndSize(code->co_name, NULL);
-  return std::string(method_name_char);
+std::string PyCode_GetName(PyCodeObject* code) {
+  Py_ssize_t size;
+  const char* method_name_char = PyUnicode_AsUTF8AndSize(code->co_name, &size);
+  return std::string(method_name_char, size);
 }
 std::string PyFrame_GetName(PyFrameObject* frame) {
-  return PyFrame_GetName(frame->f_code);
+  return PyCode_GetName(frame->f_code);
 }
 
 static int profile_func(PyObject*, PyFrameObject*, int, PyObject*);
@@ -32,9 +31,49 @@ class BaseFunction {
   void add_elapsed_internal(const std::chrono::nanoseconds& time);
   const auto& overhead() const { return internal_time_; }
 
+  void add_call() { ++n_calls_; }
+  size_t n_calls() const { return n_calls_; }
+
  private:
+  size_t n_calls_ = 0;
   std::string name_;
   std::chrono::nanoseconds internal_time_ = duration(0);
+};
+
+class LineState {
+ public:
+  void add_internal(const duration& dur) { internal_ += dur; }
+  void add_external(const duration& dur) { external_ += dur; }
+
+  const duration& internal() const { return internal_; }
+  const duration& external() const { return external_; }
+
+  void add_call() { ++n_calls_; }
+  size_t n_calls() const { return n_calls_; }
+
+  LineState& operator+=(const LineState& rhs) {
+    n_calls_ += rhs.n_calls_;
+    internal_ += rhs.internal_;
+    external_ += rhs.external_;
+    return *this;
+  }
+
+ private:
+  size_t n_calls_ = 0;
+  duration internal_ = duration(0);
+  duration external_ = duration(0);
+};
+
+class LineRecord : public LineState {
+ public:
+  LineRecord(std::string line) : line_(std::move(line)) {}
+  LineRecord(LineState state, std::string line)
+      : LineState(std::move(state)), line_(std::move(line)) {}
+
+  const std::string& text() const { return line_; }
+
+ private:
+  std::string line_;
 };
 
 class Function : public BaseFunction {
@@ -45,27 +84,12 @@ class Function : public BaseFunction {
   size_t n_lines() const { return lines_.size(); }
   const auto& lines() const { return lines_; }
 
-  void add_elapsed(size_t line_number, const std::chrono::nanoseconds& time);
-  void add_elapsed_internal(size_t line_number, const std::chrono::nanoseconds& time);
-  using BaseFunction::add_elapsed_internal;
-
-  const auto& line_time() const { return line_time_; }
-  const auto& line_time_internal() const { return line_time_internal_; }
+  LineRecord& line(size_t line_number) { return lines_.at(line_number); }
 
  private:
   PyCodeObject* code_;
-  std::vector<std::string> lines_;
-  std::vector<std::chrono::nanoseconds> line_time_;
-  std::vector<std::chrono::nanoseconds> line_time_internal_;
+  std::vector<LineRecord> lines_;
 };
-
-void Function::add_elapsed(size_t line_number, const std::chrono::nanoseconds& time) {
-  line_time_.at(line_number) += time;
-}
-
-void Function::add_elapsed_internal(size_t line_number, const std::chrono::nanoseconds& time) {
-  line_time_internal_.at(line_number) += time;
-}
 
 void BaseFunction::add_elapsed_internal(const duration& time) {
   internal_time_ += time;
@@ -73,10 +97,12 @@ void BaseFunction::add_elapsed_internal(const duration& time) {
 
 Function::Function(
     std::string name, std::vector<std::string> lines, PyCodeObject* code)
-      : BaseFunction(std::move(name)), code_(code), lines_(std::move(lines)) {
+      : BaseFunction(std::move(name)), code_(code) {
   auto n_lines = lines_.size();
-  line_time_.resize(n_lines);
-  line_time_internal_.resize(n_lines);
+  lines_.reserve(n_lines);
+  for (auto&& line : lines) {
+    lines_.emplace_back(line);
+  }
 }
 
 enum class Instruction {
@@ -91,19 +117,6 @@ enum class Instruction {
   kInvalid,
 };
 
-class LineState {
- public:
-  void add_internal(const duration& dur) { internal_ += dur; }
-  void add_external(const duration& dur) { external_ += dur; }
-
-  const duration& internal() const { return internal_; }
-  const duration& external() const { return external_; }
-
- private:
-  duration internal_;
-  duration external_;
-};
-
 class FrameState {
  public:
   FrameState(PyCodeObject* code, size_t n_lines, size_t starting_line) 
@@ -114,7 +127,10 @@ class FrameState {
 
   duration total_time() const;
   LineState& current_line() { return lines_.at(current_line_-starting_line_-1); }
-  void set_current_line(size_t current_line) { current_line_ = current_line; }
+  LineState& set_current_line(size_t line_number) {
+    current_line_ = line_number;
+    return current_line();
+  }
 
   void add_internal(const duration& dur) { internal_ += dur; }
   const duration& internal() const { return internal_; }
@@ -144,6 +160,7 @@ class Module {
   using Time = clock::rep;
   using time_point = clock::time_point;
   Module(PyObject*);
+  ~Module();
   void start();
   void stop();
   unsigned long long dump(const char*);
@@ -189,6 +206,17 @@ class Module {
 
 Module::Module(PyObject* m) : parent_(m) {
   inspect_ = PyImport_ImportModule("inspect");
+  if (inspect_ == NULL) {
+    throw std::runtime_error("Could not import `inspect'");
+  }
+}
+
+Module::~Module() {
+  if (inspect_ != NULL) {
+    Py_DECREF(inspect_);
+  } else {
+    throw std::runtime_error("Bad");
+  }
 }
 
 duration Module::elapsed() {
@@ -220,24 +248,25 @@ void Module::stop() {
 unsigned long long Module::dump(const char* path) {
   for (auto&& pair : functions_) {
     Function& function = pair.second;
-    std::cout << "Name: " << function.name() << ", "
-      << function.overhead().count()/1e9 << std::endl;
+    std::cout << "Name: " << function.name() << ", Count: " << function.n_calls()
+      << ", Overhead: " << function.overhead().count()/1e9 << std::endl;
     auto&& lines = function.lines();
     for (size_t i=0; i < lines.size(); ++i) {
-      auto&& external = function.line_time().at(i);
-      auto&& internal = function.line_time_internal().at(i);
-      auto&& line = lines.at(i);
+      LineRecord& line = function.line(i);
+      auto&& external = line.external();
+      auto&& internal = line.internal();
       auto total = external + internal;
       std::cout << total.count()/1e9 << '(' << internal.count()/1e9 << '/'
 	<< external.count()/1e9
-	<< ')' << ": " << line;
+	<< ")[" << line.n_calls() << "]: " << line.text();
     }
   }
 
   for (auto&& pair : c_functions_) {
     BaseFunction& function = pair.second;
-    std::cout << "Name: " << function.name() << ", " <<
-      function.overhead().count()/1e9 << std::endl;
+    std::cout << "Name: " << function.name() << ", "
+      << function.overhead().count()/1e9 << '[' << function.n_calls() << ']'
+      << std::endl;
   }
 
   return 0;
@@ -305,7 +334,8 @@ void Module::profile(int what, PyFrameObject* frame, PyObject* arg) {
 }
 
 void Module::profile_call(PyFrameObject* frame) {
-  add_function(frame);
+  auto& function = add_function(frame);
+  function.add_call();
   frame->f_trace_opcodes = 0;
   emplace_frame(frame);
   last_instruction_ = Instruction::kCall;
@@ -323,16 +353,28 @@ void Module::profile_line(PyFrameObject* frame) {
   }
 
   auto line_number = PyFrame_GetLineNumber(frame);
-  frame_stack_.top().set_current_line(line_number);
+  auto& line = frame_stack_.top().set_current_line(line_number);
+  line.add_call();
 }
 
 void Module::profile_c_call(PyFrameObject* frame, PyObject* arg) {
-  PyObject* name = PyObject_Str(arg);
+  PyObject* module = PyObject_GetAttrString(arg, "__module__");
+  PyObject* qualname = PyObject_GetAttrString(arg, "__qualname__");
+  PyObject* name = PyUnicode_FromFormat("<C-function %U.%U>", module, qualname);
+  if (name == NULL) {
+    throw std::runtime_error("Could not get C call name");
+  }
+
   Py_ssize_t size;
   const char* name_char = PyUnicode_AsUTF8AndSize(name, &size);
   last_c_name_ = std::string(name_char, size);
-  add_c_function(last_c_name_);
+  auto& c_function = add_c_function(last_c_name_);
+  c_function.add_call();
   last_instruction_ = Instruction::kCCall;
+
+  Py_DECREF(name);
+  Py_DECREF(qualname);
+  Py_DECREF(module);
 }
 
 void Module::finish_ccall(PyFrameObject* frame) {
@@ -370,8 +412,8 @@ void Module::pop_frame() {
   function.add_elapsed_internal(frame.internal());
   size_t i = 0;
   for (auto&& line : frame.lines()) {
-    function.add_elapsed(i, line.external());
-    function.add_elapsed_internal(i, line.internal());
+    LineRecord& line_record = function.line(i++);
+    line_record += line;
   }
   auto total = frame.total_time();
 
@@ -386,14 +428,20 @@ std::vector<std::string> Module::get_lines(
     PyFrameObject* frame, size_t* line_start) {
   PyCodeObject* code = frame->f_code;
   PyObject* method_name_py = PyUnicode_FromString("getsourcelines");
+  if (method_name_py == NULL) {
+    throw std::runtime_error("Could not create str");
+  }
 
   PyObject* result = PyObject_CallMethodObjArgs(inspect_, method_name_py, (PyObject*)code, NULL);
+  if (result == NULL) {
+    Py_DECREF(method_name_py);
+    throw std::runtime_error("Could not get `inspect.getsourcelines' method");
+  }
   PyObject* lines_py = PyTuple_GetItem(result, 0);
 
   if (line_start != nullptr) {
     PyObject* line_start_py = PyTuple_GetItem(result, 1);
     *line_start = PyLong_AsUnsignedLongLong(line_start_py);
-    Py_XDECREF(line_start_py);
   }
 
   auto n_lines = PyList_Size(lines_py);
@@ -495,6 +543,9 @@ static PyMethodDef module_methods[] = {
 };
 
 static void module_free(void* m) {
+  if (m == NULL) {
+    return;
+  }
   Module* mod = (Module*)PyModule_GetState((PyObject*)m);
   if (mod != NULL) {
     mod->~Module();
