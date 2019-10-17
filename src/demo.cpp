@@ -214,11 +214,7 @@ Module::Module(PyObject* m) : parent_(m) {
 }
 
 Module::~Module() {
-  if (inspect_ != NULL) {
-    Py_DECREF(inspect_);
-  } else {
-    throw std::runtime_error("Bad");
-  }
+  Py_XDECREF(inspect_);
 }
 
 duration Module::elapsed() {
