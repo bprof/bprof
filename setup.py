@@ -21,8 +21,8 @@ from distutils.extension import Extension
 
 module1 = Extension('bprof._bprof',
                     sources = ['src/demo.cpp'],
-                    extra_compile_args=['-std=c++17'],
-                    language = 'c++17')
+                    extra_compile_args=['-std=c++17']
+                    )
 
 setup(
     author="Joel Frederico",
