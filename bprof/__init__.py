@@ -4,6 +4,6 @@
 
 __author__ = """Joel Frederico"""
 __email__ = 'joelfrederico@gmail.com'
-__version__ = '0.4.0'
+__version__ = '0.4.2'
 
 from ._bprof import start, stop, dump
