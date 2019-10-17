@@ -27,7 +27,7 @@ module1 = Extension('bprof._bprof',
 setup(
     author="Joel Frederico",
     author_email='joelfrederico@gmail.com',
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
+    python_requires='>=3.7',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
