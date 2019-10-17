@@ -6,7 +6,8 @@
 
 import unittest
 
-from bprof import bprof
+from bprof import start, stop
+from bprof.profile import Profile
 
 
 class TestBprof(unittest.TestCase):
