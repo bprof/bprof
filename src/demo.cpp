@@ -163,7 +163,7 @@ class Module {
   ~Module();
   void start();
   void stop();
-  unsigned long long dump(const char*);
+  PyObject* dump(const char*);
 
   void profile(int what, PyFrameObject* frame, PyObject* arg);
   void profile_call(PyFrameObject*);
@@ -188,6 +188,8 @@ class Module {
   BaseFunction& add_c_function(std::string);
 
   duration elapsed();
+  const auto& functions() const { return functions_; }
+  const auto& c_functions() const { return c_functions_; }
 
  private:
   std::vector<std::string> get_lines(
@@ -245,31 +247,81 @@ void Module::stop() {
   PyEval_SetTrace(NULL, NULL);
 }
 
-unsigned long long Module::dump(const char* path) {
-  for (auto&& pair : functions_) {
-    Function& function = pair.second;
-    std::cout << "Name: " << function.name() << ", Count: " << function.n_calls()
-      << ", Overhead: " << function.overhead().count()/1e9 << std::endl;
-    auto&& lines = function.lines();
-    for (size_t i=0; i < lines.size(); ++i) {
-      LineRecord& line = function.line(i);
-      auto&& external = line.external();
-      auto&& internal = line.internal();
-      auto total = external + internal;
-      std::cout << total.count()/1e9 << '(' << internal.count()/1e9 << '/'
-	<< external.count()/1e9
-	<< ")[" << line.n_calls() << "]: " << line.text();
+PyObject* CreateFunctionDict(const BaseFunction& function) {
+  PyObject* function_py = PyDict_New();
+  PyObject* n_calls = PyLong_FromUnsignedLongLong(function.n_calls());
+  const auto& name = function.name();
+  PyObject* name_py = PyUnicode_DecodeUTF8(name.data(), name.size(), NULL);
+  PyObject* internal = PyLong_FromUnsignedLongLong(function.overhead().count());
+  
+  PyDict_SetItemString(function_py, "name", name_py);
+  Py_DECREF(name_py);
+  PyDict_SetItemString(function_py, "n_calls", n_calls);
+  Py_DECREF(n_calls);
+  PyDict_SetItemString(function_py, "internal_ns", internal);
+  Py_DECREF(internal);
+
+  return function_py;
+}
+
+PyObject* Module::dump(const char* path) {
+  PyObject* functions = PyDict_New();
+  for (auto&& function_pair : functions_) {
+    Function& function = function_pair.second;
+    PyObject* function_py = CreateFunctionDict(function);
+
+    const auto& lines = function.lines();
+    PyObject* lines_py = PyList_New(lines.size());
+    size_t j = 0;
+    for (auto&& line : lines) {
+      const auto& line_str = line.text();
+      PyObject* line_dict = PyDict_New();
+      PyObject* line_str_py = 
+	PyUnicode_DecodeUTF8(line_str.data(), line_str.size(), NULL);
+      PyObject* line_n_calls = PyLong_FromUnsignedLongLong(line.n_calls());
+      PyObject* line_internal =
+	PyLong_FromUnsignedLongLong(line.internal().count());
+      PyObject* line_external =
+	PyLong_FromUnsignedLongLong(line.external().count());
+
+      PyDict_SetItemString(line_dict, "line_str", line_str_py);
+      Py_DECREF(line_str_py);
+      PyDict_SetItemString(line_dict, "n_calls", line_n_calls);
+      Py_DECREF(line_n_calls);
+      PyDict_SetItemString(line_dict, "internal_ns", line_internal);
+      Py_DECREF(line_internal);
+      PyDict_SetItemString(line_dict, "external_ns", line_external);
+      Py_DECREF(line_external);
+
+      PyList_SET_ITEM(lines_py, j++, line_dict);
     }
+    PyDict_SetItemString(function_py, "lines", lines_py);
+    Py_DECREF(lines_py);
+
+    PyObject* key = PyLong_FromUnsignedLongLong(
+	reinterpret_cast<size_t>(function_pair.first));
+    PyDict_SetItem(functions, key, function_py);
+    Py_DECREF(key);
+    Py_DECREF(function_py);
   }
 
-  for (auto&& pair : c_functions_) {
-    BaseFunction& function = pair.second;
-    std::cout << "Name: " << function.name() << ", "
-      << function.overhead().count()/1e9 << '[' << function.n_calls() << ']'
-      << std::endl;
+  PyObject* c_functions = PyDict_New();
+  for (auto&& function_pair : c_functions_) {
+    PyObject* function_py = CreateFunctionDict(function_pair.second);
+    auto& name_str = function_pair.first;
+    PyObject* name = PyUnicode_DecodeUTF8(name_str.data(), name_str.size(), NULL);
+    PyDict_SetItem(c_functions, name, function_py);
+    Py_DECREF(name);
+    Py_DECREF(function_py);
   }
 
-  return 0;
+  PyObject* result = PyDict_New();
+  PyDict_SetItemString(result, "functions", functions);
+  Py_DECREF(functions);
+  PyDict_SetItemString(result, "c_functions", c_functions);
+  Py_DECREF(c_functions);
+
+  return result;
 }
 
 void Module::profile(int what, PyFrameObject* frame, PyObject* arg) {
@@ -526,7 +578,7 @@ module_dump(PyObject* m, PyObject* path) {
     return NULL;
   }
 
-  return PyLong_FromUnsignedLongLong(mod->dump(bytes_data));
+  return mod->dump(bytes_data);
 }
 
 PyDoc_STRVAR(module_doc,
