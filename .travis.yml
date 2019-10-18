@@ -19,14 +19,10 @@ deploy:
 
 os: osx
 
-osx_image:
-  - xcode11.2
-  - xcode10.1
-  - xcode9.2
-  - xcode8
-  - xcode6.4
+osx_image: xcode10.1
 
 jobs:
   include:
     - deploy:
-        distributions: sdist
+        distributions: sdist bdist_wheel
+      osx_image: xcode11.2
