@@ -3,8 +3,9 @@ branches: master
 addons:
   homebrew:
     packages: python
+    update: true
 
-install: pip install tox
+install: pip3 install tox
 script: tox
 
 deploy:
