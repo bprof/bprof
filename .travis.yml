@@ -3,7 +3,6 @@ branches: master
 addons:
   homebrew:
     packages: python
-    update: true
 
 install:
   - brew upgrade python
