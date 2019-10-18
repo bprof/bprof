@@ -4,9 +4,7 @@ addons:
   homebrew:
     packages: python
 
-install:
-  - brew upgrade python
-    pip3 install tox
+install: pip3 install tox
 script: tox
 
 deploy:
