@@ -1,12 +1,10 @@
 branches: master
 
-language: python
-python:
-  - 3.7
-  - 3.8
+addons:
+  homebrew:
+    packages: python
 
-install: pip install -U tox-travis
-
+install: pip install tox
 script: tox
 
 deploy:
@@ -32,6 +30,3 @@ jobs:
   include:
     - deploy:
         distributions: sdist
-    - deploy:
-        distributions: sdist
-      python: 3.8
