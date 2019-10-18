@@ -1,64 +1,37 @@
-jobs:
-  include:
-    - sudo: required
-      services:
-        - docker
-      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64
-           PLAT=manylinux1_x86_64
-      script:
-        - docker run --rm -e PLAT=$PLAT -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/travis/build-wheels.sh
-    - sudo: required
-      services:
-        - docker
-      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686
-           PRE_CMD=linux32
-           PLAT=manylinux1_i686
-      script:
-        - docker run --rm -e PLAT=$PLAT -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/travis/build-wheels.sh
-    - sudo: required
-      services:
-        - docker
-      env: DOCKER_IMAGE=quay.io/pypa/manylinux2010_x86_64
-           PLAT=manylinux2010_x86_64
-      script:
-        - docker run --rm -e PLAT=$PLAT -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/travis/build-wheels.sh
-    - os: osx
-      osx_image: xcode11.2
-      install: pip install -U tox-travis
-      script: tox
-    - os: osx
-      osx_image: xcode10.1
-      install: pip install -U tox-travis
-      script: tox
-    - os: osx
-      osx_image: xcode9.2
-      install: pip install -U tox-travis
-      script: tox
-    - os: osx
-      osx_image: xcode8
-      install: pip install -U tox-travis
-      script: tox
-    - os: osx
-      osx_image: xcode6.4
-      install: pip install -U tox-travis
-      script: tox
-
-branches:
-  except:
-  - develop
+branches: master
 
 language: python
-
 python:
   - 3.7
   - 3.8
 
+install: pip install -U tox-travis
+
+script: tox
+
 deploy:
   provider: pypi
-  distributions: sdist bdist_wheel
-  user: joelfrederico
+  distributions: bdist_wheel
+  user: __token__
   password:
-    secure: k6lyPVJq0t2T5EccY5nLgmwA+TMiXzfGtZdx9YNjHWEib8buytgI9D2Qd8BDC1S8bYMw8K3MmuTBChfk55VkBNGJXAqIr8K+g6GKmot5BjDJbVmfhiBVL03RW50F4eXAbAQCzcEyIGW0KW5BEyTv3ku3pJxSn3qMzKsXblsYdgvTulLA2fwL8t1Kb+LXBR/v93bvyiUPbK2cemTFKcjskS3Tzlbw89vW0FqaLYPuOmYqpbnpQYe45rU0dZSyPIuQjZeDOOV3ptqDs4nq1uiow3FTVyFTv2eX+eKjE47uaQfCYyvlpCN/1gDUbJ7XO9LC91vxj0+qMjrRclfjcnWSjWws2+RsJkn7hoo1WiVopkwVBsfL8OuZB9donQXHzA9p1vshKkJ2iIfyiueqZxdPcWQCtusPulS2YuYVpq6jH5WDWEDsVhvnF1dB8DL8OjGOkp3wjVIDg5hexdYcq+R6CyQdKt/5a8F9FFEEOjFpMo9vdjKhwC8zF6FR8jRKaax4sT+CFdUs7+2LKJkpDIhLRc6ZBzOuzW9+IzLZFSNBoXqsH8UKo4+UyZhXtFAj8xioh7tygEegif4I9t8u0U2TZos2NNx+PeKbsnoQnQyiirOWeEBg/i9qY9eEcp2j69lfGqehojtiCKI42bQkowG91pCUu7PqBorbsrWtGOdH0l0=
+    secure: PblLxa3R4N+I0MOoMbyDCoc7OQi6MP8nw1Auw/LYSgq59j1azQQu2AwRgjyWTvViyrOalsw2/Gopt/GgLMW8bFxPTDU9ZUc0WxXF3vm3p5C6oquAU3TpGQyRH1ylnTxTEs0U7bzS7AT5k0r7SUn965tWO6Ju7J6gxfVuDmYOCzZpYQtrIOKSi4MQVAWyjoU2vGVKZypmXdhYqAUATlhE7pjkOzAbVeOjRCf4rFX0BLlFYvOvNoair1zgc2gPMrv6rZ7aQmdjkS9LxIM2614ORfPc7pPZuAUFlNuXn22pmx7Kkn/d73AmONDtXmKcc6vq5+0awR5BmCb3a7dtU4c0JTRfr9VEYBHHP9koF1NsooACVCKaqpfg6wvrrp4uK8nLiGFOaN8kxDfqrdL2lEzJiEoff2rV7e0RmRXLqXY5vQL2XqFd5r+cd2pR7SKfSToXm0kAjSaxe+/WdKPEewuhX1vCYqZJX3HBatYJNRjc8bLcpB7Mk/pYalbREOHry+umoU+iB+Fhg7QC+Mtmohcqzsmch5sBH2sYj9M5Hwh1bauf+eQbBphtrZoL0CitAVSCpPk9iXkiJ4PaP5bCWW8USZxG48JhlXby4WHbDnQE+GPgqZRpp6MNTJugzZ32SOmCXp0bLnHmbs8pKigm18JOeqeOlN0vJVPu1w3/FkDwJw8=
   on:
     tags: true
     repo: joelfrederico/bprof
+
+os: osx
+
+osx_image:
+  - xcode11.2
+  - xcode10.1
+  - xcode9.2
+  - xcode8
+  - xcode6.4
+
+jobs:
+  include:
+    - deploy:
+        distributions: sdist
+    - deploy:
+        distributions: sdist
+      python: 3.8
