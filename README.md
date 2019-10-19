@@ -2,7 +2,6 @@
 
 [![](https://img.shields.io/pypi/v/bprof.svg)](https://pypi.python.org/pypi/bprof)
 [![](https://img.shields.io/travis/joelfrederico/bprof.svg)](https://travis-ci.org/joelfrederico/bprof)
-[![Documentation Status](https://readthedocs.org/projects/bprof/badge/?version=latest)](https://bprof.readthedocs.io/en/latest/?badge=latest)
 
 A Better PROFiler
 
