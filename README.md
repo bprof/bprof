@@ -47,14 +47,6 @@ Name: <built-in function sleep>, 1.00074
 
 ## Future
 
-There is a lot of future work. The display is rudimentary and not programmatically accessible. There are crashes in some scenarios on running invalid code, or upon exit. This is just a first pass.
+There is a lot of future work. This is just a first pass.
 
-* Function counts
 * Save statistics
-
-## Credits
-
-This package was created with [Cookiecutter][1] and the [audreyr/cookiecutter-pypackage][2] project template.
-
-[1]: https://github.com/audreyr/cookiecutter
-[2]: https://github.com/audreyr/cookiecutter-pypackage
