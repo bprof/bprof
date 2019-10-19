@@ -25,7 +25,6 @@ module1 = Extension('bprof._bprof',
                         'src/frame.cpp',
                         'src/_bprof.cpp',
                         'src/_bprof_bridge.cpp',
-                        'src/demo.cpp',
                         ],
                     include_dirs=['src'],
                     extra_compile_args=['-std=c++17']
