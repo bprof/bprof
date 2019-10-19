@@ -20,7 +20,13 @@ test_requirements = []
 from distutils.extension import Extension
 
 module1 = Extension('bprof._bprof',
-                    sources = ['src/demo.cpp'],
+                    sources = [
+                        'src/function.cpp',
+                        'src/frame.cpp',
+                        'src/_bprof.cpp',
+                        'src/_bprof_bridge.cpp',
+                        'src/demo.cpp',
+                        ],
                     extra_compile_args=['-std=c++17']
                     )
 
