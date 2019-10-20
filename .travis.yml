@@ -1,5 +1,3 @@
-branches: master
-
 addons:
   homebrew:
     packages: python
